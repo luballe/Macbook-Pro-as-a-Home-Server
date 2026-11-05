@@ -21,19 +21,35 @@ A laptop with a battery is a free UPS, but only if it comes back by itself:
 [`scripts/battery-guard`](../scripts/battery-guard) +
 [`/etc/default/battery-guard`](../config/battery-guard):
 
+The guard runs in two moments, each with its own threshold:
+
+- **Every minute while running** (`SUSPEND_AT`, 5 %): the normal case during an outage.
+- **Once at boot** (`BOOT_AT`, 10 %): a higher threshold, so the machine does not
+  finish booting (and start Docker and other services) on an almost empty battery
+  only to suspend a minute later.
+
 ```mermaid
 flowchart TD
-    T[battery-guard.timer<br/>every minute] --> C{Charger<br/>connected?}
-    B[battery-guard-boot.service<br/>at boot, before Docker] --> E[Enable ADP1 wake<br/>in /proc/acpi/wakeup] --> C
-    C -- yes --> OK[Do nothing]
-    C -- no --> L{Battery &le; threshold?<br/>timer: 5 %<br/>boot: 10 %}
-    L -- no --> OK
-    L -- yes --> S[systemctl suspend]
+    T[Every minute while running<br/>battery-guard.timer] --> C1{Charger<br/>connected?}
+    C1 -- yes --> OK[Do nothing]
+    C1 -- no --> L1{Battery at or<br/>below 5 %?}
+    L1 -- no --> OK
+    L1 -- yes --> S[Suspend<br/>systemctl suspend]
+
+    B[Once at boot, before Docker<br/>battery-guard-boot.service] --> E[Enable wake on charger<br/>ADP1 in /proc/acpi/wakeup]
+    E --> C2{Charger<br/>connected?}
+    C2 -- yes --> OK2[Continue booting]
+    C2 -- no --> L2{Battery at or<br/>below 10 %?}
+    L2 -- no --> OK2
+    L2 -- yes --> S
+
     S --> W{What wakes it?}
     W -- charger plugged in --> R[Resume: services continue,<br/>resume-display restores the screen]
     W -- key press, no charger --> T
-    W -- battery fully drained --> D[Hard power loss<br/>AUPO may power on later<br/>untested]
+    W -- battery fully drained --> D[Hard power loss<br/>AUPO may power it on later<br/>untested]
 ```
+
+Terms and acronyms are explained in the [glossary](glossary.md).
 
 | Piece | Role |
 |---|---|

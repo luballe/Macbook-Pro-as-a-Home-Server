@@ -56,3 +56,7 @@ Host home-server
 `originalhost` is the name you typed, so list every alias you use in the `Match`.
 Other machines reachable from the server can then be used with
 `ProxyJump home-server`, without opening their SSH ports to the internet.
+
+---
+
+Terms and acronyms: [glossary](glossary.md).

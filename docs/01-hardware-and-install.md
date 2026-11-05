@@ -94,3 +94,7 @@ unbootable.
 - Static IP with netplan, and `99-disable-network-config.cfg` so cloud-init does not
   rewrite it. Some routers (AT&T BGW320) do not list hosts with a static IP and
   cannot reserve them; they avoided handing out that address anyway.
+
+---
+
+Terms and acronyms: [glossary](glossary.md).

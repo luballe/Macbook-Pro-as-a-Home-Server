@@ -62,3 +62,7 @@ sudo real-poweroff
 After the battery runs down and the system shuts down cleanly (UPower at 1 %),
 reconnecting the charger does **not** power the machine on, even with `AUPO=1`.
 That case is handled by the battery guard: [04-power-management.md](04-power-management.md).
+
+---
+
+Terms and acronyms: [glossary](glossary.md).

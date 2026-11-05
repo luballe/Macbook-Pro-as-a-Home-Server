@@ -5,7 +5,7 @@ Turning a **2010 MacBook Pro 13" (`MacBookPro7,1`)** into a headless **Ubuntu Se
 a UPS and brings the machine back by itself after a power outage, and a screen you
 can still use.
 
-Everything here was measured and tested on real hardware. The low-level parts (SMC
+Everything here was measured and tested on real hardware. New to some of the terms? See the [glossary](docs/glossary.md). The low-level parts (SMC
 keys, GPU registers, wake sources) are specific to this model; the ideas apply to
 other old Intel Macs.
 
@@ -63,7 +63,7 @@ the chip check and the SMC keys were only verified on `MacBookPro7,1`.
 | [scripts/](scripts/) | `smc-key`, `smc-settings`, `battery-guard`, `real-poweroff`, `backlight`, `resume-display`, `server-status`, `bench` |
 | [systemd/](systemd/) | Units and the triggerhappy override |
 | [config/](config/) | `/etc/default` files, mbpfan, triggerhappy, logind, GRUB, UPower, WireGuard example |
-| [docs/](docs/) | Hardware and install, thermal, battery and SMC, power management, display, remote access |
+| [docs/](docs/) | Hardware and install, thermal, battery and SMC, power management, display, remote access, and a [glossary](docs/glossary.md) of terms and acronyms |
 | [tests/](tests/test-plan.md) | Power and display test plan with results |
 | [data/](data/) | Full battery discharge log, one sample per minute |
 

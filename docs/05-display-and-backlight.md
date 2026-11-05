@@ -57,3 +57,7 @@ flowchart LR
 
 `backlight` picks the right path automatically: `nv_backlight` when `nouveau` is
 bound, BAR0 otherwise. 0 % turns the panel fully off on both.
+
+---
+
+Terms and acronyms: [glossary](glossary.md).

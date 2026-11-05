@@ -37,3 +37,7 @@ Result: dual-core throughput went from 1,116 to 1,677 bogo ops/s
 - Some SMC sensors are not real readings: `TN1G` is stuck at 90, and `TB0T`-`TB2T`
   read -127 without a battery.
 - After 10+ years, **replacing the CPU thermal paste** is the next improvement.
+
+---
+
+Terms and acronyms: [glossary](glossary.md).
