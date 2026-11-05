@@ -11,17 +11,16 @@ other old Intel Macs.
 
 ## What you get
 
-| Problem on a stock install | Fix | Doc |
-|---|---|---|
-| Boot takes 5-7 minutes | `tsc=unstable` | [01](docs/01-hardware-and-install.md) |
-| CPU stuck at 1.59 GHz | Install a battery: without one the CPU is capped | [01](docs/01-hardware-and-install.md) |
-| CPU hits 98 °C and throttles | `mbpfan` with an earlier curve: **+50 % throughput** | [02](docs/02-thermal-and-fan.md) |
-| Battery always at 100 % | SMC charge limit `BCLM=80` | [03](docs/03-battery-and-smc.md) |
-| Does not come back after an outage | Battery guard: suspend at 5 %, wake when the charger returns | [04](docs/04-power-management.md) |
-| `poweroff` reboots (with `AUPO=1`) | `real-poweroff` | [03](docs/03-battery-and-smc.md) |
-| No brightness control headless | Backlight through the GPU registers + brightness keys, down to fully off | [05](docs/05-display-and-backlight.md) |
-| Black screen after resume | Load `nouveau` only after resume | [05](docs/05-display-and-backlight.md) |
-| Reaching it from outside home | WireGuard + SSH `Match` | [06](docs/06-remote-access.md) |
+| Feature | Doc |
+|---|---|
+| **Fast, headless Ubuntu Server 24.04**, booting in about 50 s and running 24/7 from the console | [01](docs/01-hardware-and-install.md) |
+| **Full CPU speed** (2.66 GHz) and **+70 % dual-core throughput** over the stock setup, kept cool by a tuned `mbpfan` curve | [02](docs/02-thermal-and-fan.md) |
+| **The battery as a built-in UPS**: about 3 h of power outage covered, with the charge limited to 80 % to preserve it | [03](docs/03-battery-and-smc.md) |
+| **Comes back by itself after an outage**: on low battery it suspends and wakes up when the power returns, with no button press | [04](docs/04-power-management.md) |
+| **Recovers from hangs and unexpected shutdowns** by powering itself back on, plus a `real-poweroff` command for when you really mean it | [03](docs/03-battery-and-smc.md) |
+| **Working brightness keys**, down to fully off, and the screen comes back after every resume so you can tell it is awake | [05](docs/05-display-and-backlight.md) |
+| **Secure remote access** from anywhere through WireGuard, with one SSH name at home or away | [06](docs/06-remote-access.md) |
+| **One-command health check** (`server-status`) and a tested installer | [tests](tests/test-plan.md) |
 
 ## How it fits together
 
@@ -77,6 +76,24 @@ the chip check and the SMC keys were only verified on `MacBookPro7,1`.
 | Battery runtime from 100 % | 4 h 01 min |
 | Draw while suspended | ~0.5 W (about 7 h on the 5 % reserve) |
 | Dual-core throughput, no battery → battery + mbpfan | 978 → 1,677 bogo ops/s |
+
+## Problems solved along the way
+
+Getting here took a lot of measuring, testing and trial and error on the real
+machine. These are the obstacles a stock install runs into, and how each one was
+solved:
+
+| Problem on a stock install | Fix | Doc |
+|---|---|---|
+| Boot takes 5-7 minutes (the TSC stops in deep idle) | `tsc=unstable` | [01](docs/01-hardware-and-install.md) |
+| CPU stuck at 1.59 GHz | Install a battery: without one the CPU is capped | [01](docs/01-hardware-and-install.md) |
+| CPU hits 98 °C and throttles | `mbpfan` with an earlier curve | [02](docs/02-thermal-and-fan.md) |
+| Battery always kept at 100 % | SMC charge limit `BCLM=80` | [03](docs/03-battery-and-smc.md) |
+| Stays off after a power outage drains the battery; `AUPO` and RTC alarms do not help | Battery guard: suspend at 5 %, wake when the charger returns | [04](docs/04-power-management.md) |
+| `poweroff` reboots once `AUPO=1` is set | `real-poweroff` | [03](docs/03-battery-and-smc.md) |
+| No brightness control without a GPU driver | Backlight through the GPU registers + brightness keys | [05](docs/05-display-and-backlight.md) |
+| Black screen after resuming from suspend | Load `nouveau` only after resume | [05](docs/05-display-and-backlight.md) |
+| UPower never acts on a server (it only starts on demand) | Start it at boot | [04](docs/04-power-management.md) |
 
 ## Disclaimer
 
