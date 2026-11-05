@@ -1,0 +1,22 @@
+#!/bin/bash
+# Really power the MacBook off.
+#
+# With AUPO=1 the SMC powers the machine back on about 20 s after ANY poweroff, with
+# or without the charger. This sets AUPO=0 in the SMC only (not in
+# /etc/default/smc-settings), checks it, and powers off. smc-settings.service puts
+# AUPO=1 back on the next boot. Turn it on again with the power button.
+set -e
+[ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+systemctl stop mbpfan 2>/dev/null || true
+modprobe -r applesmc
+/usr/local/sbin/smc-key write AUPO 0
+v=$(/usr/local/sbin/smc-key read AUPO)
+modprobe applesmc
+echo "$v"
+if [ "$v" != "AUPO 0" ]; then
+  systemctl start mbpfan 2>/dev/null || true
+  echo "Could not set AUPO=0; not powering off." >&2
+  exit 1
+fi
+echo "Powering off. Use the power button to turn it on again."
+systemctl poweroff

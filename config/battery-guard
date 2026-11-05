@@ -1,0 +1,4 @@
+# /etc/default/battery-guard (percent of battery, only applies without the charger)
+# Suspend when the battery reaches SUSPEND_AT; at boot, if it is at BOOT_AT or below.
+SUSPEND_AT=5
+BOOT_AT=10

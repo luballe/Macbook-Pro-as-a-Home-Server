@@ -1,0 +1,13 @@
+[Unit]
+Description=Critical battery at boot: enable wake on charger (ADP1) and suspend if needed
+After=smc-settings.service
+# Add here the heavy services that should not start on a nearly empty battery.
+Before=mbpfan.service docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/battery-guard boot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

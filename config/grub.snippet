@@ -1,0 +1,8 @@
+# /etc/default/grub (then: sudo update-grub)
+GRUB_DEFAULT=saved
+GRUB_TIMEOUT_STYLE=hidden
+GRUB_TIMEOUT=0
+GRUB_RECORDFAIL_TIMEOUT=0
+# tsc=unstable: the TSC stops in C3 idle on this CPU; without it boot takes 5-7 min.
+# nouveau and b43 are not needed headless and log errors at boot.
+GRUB_CMDLINE_LINUX_DEFAULT="tsc=unstable modprobe.blacklist=nouveau,b43"

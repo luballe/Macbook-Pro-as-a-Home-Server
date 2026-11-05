@@ -1,0 +1,9 @@
+[Unit]
+Description=Restore the screen backlight level chosen with the keys
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/backlight restore
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+# Settings changed in /etc/UPower/UPower.conf (backstop if battery-guard fails).
+# UPower is D-Bus activated and only starts when queried; make it always run:
+#   sudo systemctl add-wants multi-user.target upower.service
+UsePercentageForPolicy=true
+PercentageLow=20
+PercentageCritical=5
+PercentageAction=4
+CriticalPowerAction=PowerOff

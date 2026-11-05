@@ -1,0 +1,32 @@
+#!/bin/bash
+# One-screen status of the MacBook server: run it after a boot, reboot or resume.
+# Usage: sudo server-status
+# Extra services and hosts to check can be set in /etc/default/server-status:
+#   EXTRA_SERVICES="docker wg-quick@wg0"
+#   PING_HOSTS="10.0.0.1"
+[ "$(id -u)" = 0 ] || exec sudo "$0" "$@"
+[ -r /etc/default/server-status ] && . /etc/default/server-status
+line() { printf '  %-24s %s\n' "$1" "$2"; }
+
+echo "== $(hostname) $(date '+%F %T')"
+line "boot" "$(uptime -s) ($(cut -d. -f1 /proc/uptime) s; resumes this boot: $(journalctl -b -k --no-pager -q | grep -c 'PM: suspend exit'))"
+line "IPv4" "$(ip -br -4 a | awk '$1!="lo"{print $1" "$3}' | tr '\n' ' ')"
+line "charger / battery" "$(cat /sys/class/power_supply/ADP1/online) / $(cat /sys/class/power_supply/BAT0/capacity)% $(cat /sys/class/power_supply/BAT0/status)"
+
+systemctl stop mbpfan 2>/dev/null; modprobe -r applesmc 2>/dev/null
+smc="$(/usr/local/sbin/smc-key read BCLM) $(/usr/local/sbin/smc-key read AUPO)"
+modprobe applesmc; systemctl start mbpfan 2>/dev/null
+line "SMC" "$smc"
+line "wake on charger" "$(grep -q '^ADP1.*enabled' /proc/acpi/wakeup && echo enabled || echo DISABLED)"
+drv=$(basename "$(readlink /sys/bus/pci/devices/0000:04:00.0/driver 2>/dev/null)" 2>/dev/null)
+line "GPU / backlight" "${drv:-no driver} / $(/usr/local/sbin/backlight get 2>&1)"
+
+for u in smc-settings mbpfan battery-guard-boot battery-guard.timer upower triggerhappy ${EXTRA_SERVICES:-}; do
+  printf '%s=%s ' "$u" "$(systemctl is-active "$u")"
+done | fold -s -w 96 | sed 's/^/  /'; echo
+for h in ${PING_HOSTS:-}; do
+  ping -c1 -W2 "$h" >/dev/null && r=ok || r=FAIL
+  line "ping $h" "$r"
+done
+f=$(systemctl --failed --no-legend --plain | awk '{print $1}' | tr '\n' ' ')
+line "failed units" "${f:-none}"

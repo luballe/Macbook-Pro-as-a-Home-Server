@@ -1,0 +1,39 @@
+#!/bin/bash
+# Battery guard for a MacBook used as a server.
+#
+# Without the charger and with the battery at or below the threshold, SUSPEND (S3,
+# about 0.5 W) instead of shutting down. Plugging the charger back in wakes the
+# machine (ADP1 enabled as a wake source), and everything continues without a reboot.
+#
+# Why not shut down? On this machine, after a clean shutdown on battery the SMC does
+# NOT power on again when the charger returns, not even with AUPO=1, and the RTC
+# alarm does not wake it while it runs on battery. See docs/04-power-management.md.
+#
+#   battery-guard check  -> battery-guard.timer, every minute (SUSPEND_AT)
+#   battery-guard boot   -> battery-guard-boot.service: enables ADP1 wake, uses BOOT_AT
+set -u
+[ -r /etc/default/battery-guard ] && . /etc/default/battery-guard
+SUSPEND_AT=${SUSPEND_AT:-5}
+BOOT_AT=${BOOT_AT:-10}
+
+enable_adp1_wake() {
+  # Writing a device name to /proc/acpi/wakeup TOGGLES it: only write if disabled.
+  grep -q "^ADP1.*disabled" /proc/acpi/wakeup && echo ADP1 > /proc/acpi/wakeup
+  grep -q "^ADP1.*enabled" /proc/acpi/wakeup || logger -t battery-guard "could not enable ADP1 as a wake source"
+}
+
+case "${1:-}" in
+  check) threshold=$SUSPEND_AT ;;
+  boot)  threshold=$BOOT_AT; enable_adp1_wake ;;
+  *) echo "usage: $0 check|boot" >&2; exit 2 ;;
+esac
+
+ac=$(cat /sys/class/power_supply/ADP1/online 2>/dev/null || echo 1)
+cap=$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo 100)
+if [ "$ac" = 1 ] || [ "$cap" -gt "$threshold" ]; then
+  [ "$1" = boot ] && echo "charger=$ac battery=$cap% threshold=$threshold: continuing"
+  exit 0
+fi
+enable_adp1_wake
+logger -t battery-guard "no charger and battery at $cap% (threshold $threshold, mode $1): suspending until the charger returns"
+systemctl suspend -i

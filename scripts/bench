@@ -1,0 +1,33 @@
+#!/bin/bash
+# Quick before/after benchmark for the MacBook server: power, CPU frequency,
+# temperatures, single and dual core CPU, memory and disk.
+# Usage: bench <label>   -> ~/bench/<label>-<date>.txt
+# Needs: stress-ng, openssl, hdparm (and optionally cpupower, upower).
+set -u
+TAG=${1:-run}; OUT=~/bench/$TAG-$(date +%Y%m%d-%H%M).txt; mkdir -p ~/bench
+SMC=/sys/devices/platform/applesmc.768
+temps() {
+  for l in $SMC/temp*_label; do
+    n=$(cat "$l")
+    case $n in TC0D|TC0P|TC0H|TC0F) v=$(cat "${l%_label}_input"); printf "%s=%s " "$n" $((v/1000));; esac
+  done
+  printf "fan=%s " "$(cat $SMC/fan1_input 2>/dev/null)"
+  printf "MHz=%s\n" "$(awk '/MHz/{printf "%d,",$4}' /proc/cpuinfo)"
+}
+{
+echo "== $TAG $(date -Is) kernel $(uname -r)"
+echo "-- power"
+for d in /sys/class/power_supply/*; do
+  echo "$(basename "$d") $(cat "$d/type") online=$(cat "$d/online" 2>/dev/null) status=$(cat "$d/status" 2>/dev/null) cap=$(cat "$d/capacity" 2>/dev/null)"
+done
+echo "-- cpufreq"; cpupower frequency-info 2>/dev/null | grep -E "hardware limits|current policy|current CPU frequency"
+echo "-- idle"; temps
+echo "-- CPU 1 thread (openssl sha256, 8 KiB)"; openssl speed -seconds 10 sha256 2>/dev/null | tail -1
+echo "-- CPU 2 threads (stress-ng cpu, 60 s)"
+( for i in $(seq 1 6); do sleep 10; printf "  t+%ss " $((i*10)); temps; done ) &
+stress-ng --cpu 2 --cpu-method matrixprod -t 60s --metrics-brief 2>&1 | grep -E "cpu  |bogo"; wait
+echo "-- memory (stress-ng stream, 30 s)"; stress-ng --stream 1 -t 30s --metrics-brief 2>&1 | grep -E "stream|bogo" | tail -2
+echo "-- disk (hdparm read)"; sudo hdparm -t "$(findmnt -no SOURCE / | sed 's/[0-9]*$//;s/p$//')" 2>&1 | tail -1
+echo "-- 30 s after"; sleep 30; temps
+} 2>&1 | tee "$OUT"
+echo "Saved to $OUT"

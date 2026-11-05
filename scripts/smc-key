@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Read or write a 1-byte key of the Apple SMC on an Intel Mac, through /dev/port.
+
+The protocol is the one in Linux drivers/hwmon/applesmc.c (6.8). Needs root, and the
+applesmc module must be unloaded while this runs, so both don't fight over the ports.
+
+Usage:
+  smc-key read BCLM        # battery charge limit, in %
+  smc-key write BCLM 80
+  smc-key read AUPO        # 1 = power on automatically when power returns
+  smc-key write AUPO 1
+
+Tested on MacBookPro7,1 (mid-2010). Writing arbitrary SMC keys can misconfigure the
+machine: only BCLM and AUPO have been tested here.
+"""
+import sys
+import time
+
+DATA, CMD = 0x300, 0x304
+AWAIT, IB_CLOSED, BUSY = 0x01, 0x02, 0x04
+READ_CMD, WRITE_CMD = 0x10, 0x11
+
+f = open('/dev/port', 'r+b', buffering=0)
+
+
+def inb(port):
+    f.seek(port)
+    return f.read(1)[0]
+
+
+def outb(value, port):
+    f.seek(port)
+    f.write(bytes([value]))
+
+
+def wait(val, mask):
+    us = 16
+    while us < 0x20000:
+        if inb(CMD) & mask == val:
+            return
+        time.sleep(us / 1e6)
+        us <<= 1
+    raise IOError(f'SMC timeout waiting for {val:#x}/{mask:#x}')
+
+
+def send_cmd(c):
+    wait(0, IB_CLOSED)
+    outb(c, CMD)
+
+
+def send_byte(b):
+    wait(0, IB_CLOSED)
+    wait(BUSY, BUSY)
+    outb(b, DATA)
+
+
+def sane():
+    try:
+        wait(0, BUSY)
+        return
+    except IOError:
+        pass
+    send_cmd(READ_CMD)
+    wait(0, BUSY)
+
+
+def read(key, n=1):
+    sane()
+    send_cmd(READ_CMD)
+    for c in key:
+        send_byte(ord(c))
+    send_byte(n)
+    out = []
+    for _ in range(n):
+        wait(AWAIT | BUSY, AWAIT | BUSY)
+        out.append(inb(DATA))
+    for _ in range(16):  # drain anything left
+        time.sleep(16e-6)
+        if not inb(CMD) & AWAIT:
+            break
+        inb(DATA)
+    wait(0, BUSY)
+    return out
+
+
+def write(key, values):
+    sane()
+    send_cmd(WRITE_CMD)
+    for c in key:
+        send_byte(ord(c))
+    send_byte(len(values))
+    for v in values:
+        send_byte(v)
+    wait(0, BUSY)
+
+
+if len(sys.argv) < 3 or sys.argv[1] not in ('read', 'write'):
+    sys.exit(__doc__)
+op, key = sys.argv[1], sys.argv[2]
+if len(key) != 4:
+    sys.exit('SMC keys have 4 characters')
+if op == 'write':
+    v = int(sys.argv[3])
+    if not 0 <= v <= 255:
+        sys.exit('value out of 0..255')
+    if key == 'BCLM' and not 20 <= v <= 100:
+        sys.exit('BCLM out of 20..100')
+    write(key, [v])
+print(key, read(key)[0])

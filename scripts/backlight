@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Screen backlight for a MacBookPro7,1 (GeForce 320M / MCP89) running headless Linux.
+
+Two paths:
+ - No GPU driver (normal boot, nouveau blacklisted): write the panel PWM directly in
+   BAR0 of the GPU, the way nouveau does it (nva3_set_intensity):
+     0x61c080 = divider, 0x61c084 = 0x80000000 | (percent * divider / 100)
+ - nouveau loaded (after resuming from suspend, see resume-display): use
+   /sys/class/backlight/nv_backlight.
+0 % turns the backlight fully off on both paths.
+
+Usage: backlight get | up | down | set <0-100> | restore      (needs root)
+"""
+import mmap
+import os
+import struct
+import sys
+
+GPU = os.environ.get('BACKLIGHT_GPU', '/sys/bus/pci/devices/0000:04:00.0')
+BL = '/sys/class/backlight/nv_backlight'
+STATE = '/var/lib/backlight/level'
+LEVELS = [0, 2, 4, 7, 10, 15, 20, 30, 40, 55, 70, 85, 100]
+CHIP_MCP89 = 0x0af
+
+if os.path.exists(GPU + '/driver'):
+    if not (os.path.realpath(GPU + '/driver').endswith('/nouveau') and os.path.isdir(BL)):
+        sys.exit('the GPU has a driver other than nouveau, or no nv_backlight; not touching it')
+    top = int(open(BL + '/max_brightness').read())
+
+    def get_level():
+        return round(int(open(BL + '/brightness').read()) * 100 / top)
+
+    def set_level(p):
+        open(BL + '/brightness', 'w').write(str(p * top // 100))
+else:
+    DIV, CTL = 0x61c080, 0x61c084
+    fd = os.open(GPU + '/resource0', os.O_RDWR | os.O_SYNC)
+    m = mmap.mmap(fd, 0x620000, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE)
+
+    def rd(a):
+        return struct.unpack('<I', m[a:a + 4])[0]
+
+    def wr(a, v):
+        m[a:a + 4] = struct.pack('<I', v)
+
+    if rd(0) >> 20 != CHIP_MCP89:
+        sys.exit('unexpected chip %08x (this script is for the GeForce 320M / MCP89)' % rd(0))
+    div = rd(DIV)
+    if not div:
+        sys.exit('PWM divider is 0: the display is not set up (resumed without nouveau?)')
+
+    def get_level():
+        return round((rd(CTL) & 0x7fffffff) * 100 / div)
+
+    def set_level(p):
+        wr(CTL, 0x80000000 | ((p * div + 99) // 100))
+
+current = get_level()
+
+
+def put(p):
+    p = max(0, min(100, p))
+    set_level(p)
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    open(STATE, 'w').write(str(p))
+    return p
+
+
+op = sys.argv[1] if len(sys.argv) > 1 else 'get'
+if op == 'get':
+    p = current
+elif op == 'set':
+    p = put(int(sys.argv[2]))
+elif op == 'up':
+    p = put(next((n for n in LEVELS if n > current), 100))
+elif op == 'down':
+    p = put(next((n for n in reversed(LEVELS) if n < current), 0))
+elif op == 'restore':
+    p = put(int(open(STATE).read())) if os.path.exists(STATE) else current
+else:
+    sys.exit(__doc__)
+print(f'{p}%')

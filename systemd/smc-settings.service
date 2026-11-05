@@ -1,0 +1,12 @@
+[Unit]
+Description=Battery charge limit (BCLM) and power-on after power loss (AUPO) in the MacBook SMC
+Before=mbpfan.service
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/smc-settings
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

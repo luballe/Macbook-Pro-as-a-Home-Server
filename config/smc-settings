@@ -1,0 +1,6 @@
+# /etc/default/smc-settings, applied by smc-settings.service at every boot.
+# BCLM: battery charge limit in %. Use 100 while calibrating, then 80 for a server.
+BCLM=80
+# AUPO: 1 = power on automatically after a power loss.
+# Side effect on MacBookPro7,1: EVERY poweroff becomes a reboot (~20 s). Use real-poweroff.
+AUPO=1

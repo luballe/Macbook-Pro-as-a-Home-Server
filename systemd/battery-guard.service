@@ -1,0 +1,6 @@
+[Unit]
+Description=Critical battery check (suspend until the charger returns)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/battery-guard check

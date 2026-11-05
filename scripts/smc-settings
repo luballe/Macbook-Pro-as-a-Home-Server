@@ -1,0 +1,9 @@
+#!/bin/sh
+# Applies /etc/default/smc-settings to the SMC at every boot (smc-settings.service).
+# applesmc is unloaded while writing so it does not fight smc-key over the SMC ports.
+set -e
+. /etc/default/smc-settings
+modprobe -r applesmc 2>/dev/null || true
+/usr/bin/python3 -I /usr/local/sbin/smc-key write BCLM "$BCLM"
+/usr/bin/python3 -I /usr/local/sbin/smc-key write AUPO "$AUPO"
+modprobe applesmc
